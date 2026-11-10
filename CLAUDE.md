@@ -44,6 +44,14 @@ make SIGN_ID="Apple Development: pnik@me.com (E2297K96J4)"
 десятки минут на 8 ГБ; повторная — около минуты. `swift test` и `make` не
 запускать одновременно. Журналы сборки удобно писать в `.build/`.
 
+**Тесты на MBA.** Базовый прогон `swift test` 2026-11-10 (ветка `mba`, macOS 15.8,
+до правки зависания): 767 тестов, падают два — «The rest follow by name, each
+language offered once» (`MeetingLanguagesTests`, порядок сортировки языков) и
+«Every row the status window can show sits under the row above it»
+(`StatusWindowLayoutTests`, расхождение раскладки на 1–12 pt). Отличия форка эти
+области не трогают; на чистом `master` прогон не делался, причина не выяснена.
+Новые падения сверять с этим списком.
+
 **Разрешения macOS** после смены подписи выдаёт Николай: микрофон, запись
 системного звука, календарь, уведомления. Если окно запроса не появляется —
 сбросить прежнюю запись: `tccutil reset Microphone me.samat.amanu` (так же
