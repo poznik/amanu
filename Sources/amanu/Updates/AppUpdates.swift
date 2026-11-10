@@ -21,11 +21,18 @@ final class AppUpdates: NSObject, SPUUpdaterDelegate {
     /// can only fail.
     var isAvailable: Bool { controller != nil }
 
+    /// This fork never starts Sparkle. The feed in Info.plist is upstream's,
+    /// and an update from it would replace this build with the official one —
+    /// signed by another team, so the permissions would go with it, and
+    /// without whatever the fork carries that upstream has not merged yet.
+    /// With no controller the menu leaves **Check for updates…** out as well.
+    private static let updatesAreOffInThisFork = true
+
     @MainActor
     init(gate: UpdateGate) {
         self.gate = gate
         super.init()
-        guard Runtime.supportsPersistentFeatures else { return }
+        guard !Self.updatesAreOffInThisFork, Runtime.supportsPersistentFeatures else { return }
         controller = SPUStandardUpdaterController(
             startingUpdater: true,
             updaterDelegate: self,

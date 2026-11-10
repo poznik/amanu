@@ -46,8 +46,10 @@
          opens a setup window the first time, and a second dialog about update
          policy on top of it is one question too many. UpdateGate keeps the
          checks out of the way of a recording. -->
+    <!-- Off in this fork, as a second lock: AppUpdates never starts Sparkle
+         here, and if that ever changes the checks still do not run unasked. -->
     <key>SUEnableAutomaticChecks</key>
-    <true/>
+    <false/>
     <key>SUScheduledCheckInterval</key>
     <integer>86400</integer>
     <key>NSMicrophoneUsageDescription</key>
