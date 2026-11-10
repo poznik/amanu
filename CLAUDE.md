@@ -3,6 +3,65 @@
 A local-first meeting recorder for macOS. One SwiftPM package that is both the
 application and its command line; `make app` wraps the binary in `Amanu.app`.
 
+## Форк poznik
+
+Этот клон — форк `gsamat/amanu` в `poznik/amanu`, заведён 2026-11-10 ради одной
+правки: зависание главного потока при смене аудиомаршрута во время записи
+(issue [gsamat/amanu#63](https://github.com/gsamat/amanu/issues/63)). Проект живёт
+локально на MBA; Amanu на Windows остаётся официальным. Раздел ведётся по-русски,
+остальной файл — upstream, его не править.
+
+**Ветки.** `master` повторяет `upstream/master` и своих коммитов не несёт. `mba` —
+рабочая ветка форка: из неё собирается приложение, которое стоит на Маке. Правки
+для upstream — отдельными ветками от `master`, в стиле коммитов upstream
+(английская фраза, см. «Commit messages»), затем мерж в `mba`. Коммиты только
+для форка — по-русски, «область: что сделано».
+
+**Отличия `mba` от upstream.**
+
+- Sparkle выключен: `AppUpdates.updatesAreOffInThisFork` не даёт создать
+  контроллер, пункта «Проверить обновления…» в меню нет, в `Amanu-Info.plist`
+  `SUEnableAutomaticChecks` = `false`. Иначе лента upstream заменит сборку
+  официальной, подписанной другой командой.
+- `MicRecorder.listenForDefaultInputChanges`: вложенное замыкание захватывает
+  `[weak self]` само. Без этого Swift 6.2.4 (Xcode 26.3) отвергает строку с
+  `sending 'self' risks causing data races`; upstream собирает более новым Swift.
+- Bundle ID прежний, `me.samat.amanu`: конфиг `~/.config/amanu`, симлинк
+  `~/.local/bin/amanu`, хук `on_stop` и агент `me.poznik.amanu-push` работают без
+  правок. Подпись другая (Apple Development, команда `GGZ7MD65VF`), поэтому
+  разрешения macOS, выданные официальной сборке, к этой не относятся.
+
+**Сборка на MBA.** Нужны Xcode 26.3 и `cmake` (Homebrew). Связку `elseconf-build`
+разблокирует скрипт elseconf: без него `codesign` открывает окно с запросом
+пароля связки и `make` висит на нём молча.
+
+```sh
+source ~/projects/elseconf/ui/shared/apple/tools/keychain.sh && build_keychain ~/projects/elseconf
+make SIGN_ID="Apple Development: pnik@me.com (E2297K96J4)"
+```
+
+Первая сборка качает зависимости и собирает LocalVQE под обе архитектуры —
+десятки минут на 8 ГБ; повторная — около минуты. `swift test` и `make` не
+запускать одновременно. Журналы сборки удобно писать в `.build/`.
+
+**Разрешения macOS** после смены подписи выдаёт Николай: микрофон, запись
+системного звука, календарь, уведомления. Если окно запроса не появляется —
+сбросить прежнюю запись: `tccutil reset Microphone me.samat.amanu` (так же
+`AudioCapture`, `Calendar`).
+
+**Обновление с upstream.**
+
+```sh
+git fetch upstream
+git switch master && git merge --ff-only upstream/master && git push
+git switch mba && git merge master
+```
+
+**Материалы разбора ошибки** лежат вне репозитория: `~/projects/RULES/hosts/mba.md`,
+раздел «coreaudiod зацикливается», и
+`~/projects/nikvps/mba-perf/data/2026-11-10/coreaudio-watch/` (стек зависшего
+Amanu — `amanu-hang.sample.txt`). Наблюдатель — `nikvps/mba-perf/coreaudio-watch.sh`.
+
 ## Start here
 
 - `docs/pitfalls.md` — the constraints that are not visible from the code that
