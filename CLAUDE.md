@@ -24,8 +24,18 @@ application and its command line; `make app` wraps the binary in `Amanu.app`.
   (`MicRecorder.observeConfigurationChanges`), прежний движок отпускается вне
   главного потока с ожиданием не дольше 2 с (`MicRecorder.Retiring`). Разбор —
   `docs/pitfalls.md`, «Nothing the engine posts may wait for the main thread».
-  Живая проверка со снятием наушников не сделана; уходит ли цикл `coreaudiod`,
-  не известно.
+  Живая проверка 2026-11-11 (сборка 450, встреча в Elseconf, AirPods Max сняты
+  в 08:59:52): зависания нет — перезапуск захвата записан в `mic_restarts`,
+  `record stop` сработал, `meta.json` написан, встреча расшифрована. Но цикл
+  `coreaudiod` начался так же (146 % уже через 5 с, затем 200–240 %, load
+  average 104) и шёл после остановки записи; `mic.caf` с момента снятия до
+  остановки (26 с) не вырос ни на байт — новый движок на встроенном микрофоне
+  не выдал ни одного буфера (`gap_ms` в записи о перезапуске нет), `system.caf`
+  при этом рос. Вывод: зависание было следствием или спутником цикла, но не его
+  единственной причиной. Замер —
+  `~/projects/nikvps/mba-perf/data/2026-11-11/coreaudio-watch-fork/`
+  (`cpu.tsv`, `tracks.tsv`, `events.log`, `amanu-after-fix.sample.txt`).
+  Не поставлен контрольный опыт: та же встреча и снятие наушников без Amanu.
 - Sparkle выключен: `AppUpdates.updatesAreOffInThisFork` не даёт создать
   контроллер, пункта «Проверить обновления…» в меню нет, в `Amanu-Info.plist`
   `SUEnableAutomaticChecks` = `false`. Иначе лента upstream заменит сборку
