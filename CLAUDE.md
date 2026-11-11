@@ -36,6 +36,19 @@ application and its command line; `make app` wraps the binary in `Amanu.app`.
   `~/projects/nikvps/mba-perf/data/2026-11-11/coreaudio-watch-fork/`
   (`cpu.tsv`, `tracks.tsv`, `events.log`, `amanu-after-fix.sample.txt`).
   Не поставлен контрольный опыт: та же встреча и снятие наушников без Amanu.
+- Гипотеза Николая от 2026-11-11: цикл запускает режим микрофона «Изоляция голоса»,
+  включённый в macOS для Amanu (в журнале coreaudiod при старте записи —
+  `SIMULATE [me.samat.amanu]`, `semantics = voice isolation`). Второй опыт
+  (09:04:57–09:06:24, режим переключён на стандартный уже во время записи) её не
+  проверил: после `killall coreaudiod` звонок шёл через встроенные микрофон и
+  динамики (`mic_capture.input_device`), снятие AirPods в 09:06:02 маршрут не
+  меняло, `mic_restarts` пуст. Цикла не было, дорожки росли до конца, но обе —
+  цифровая тишина (−91 дБ), расшифровка: «No speech was recognized». Amanu в этом
+  опыте не перезапускался после `killall coreaudiod`; связано ли с этим молчание
+  микрофона, не выяснено. Чистый повтор: перед стартом убедиться, что ввод и
+  вывод — AirPods, режим микрофона для Amanu — стандартный.
+- Журнал приложения при проверках: `open --stderr <файл> .build/Amanu.app` —
+  без этого строки `mic: …` теряются.
 - Sparkle выключен: `AppUpdates.updatesAreOffInThisFork` не даёт создать
   контроллер, пункта «Проверить обновления…» в меню нет, в `Amanu-Info.plist`
   `SUEnableAutomaticChecks` = `false`. Иначе лента upstream заменит сборку
