@@ -19,6 +19,13 @@ application and its command line; `make app` wraps the binary in `Amanu.app`.
 
 **Отличия `mba` от upstream.**
 
+- Правка зависания (ветка `fix/route-change-deadlock`, 2026-11-11, PR в upstream
+  не отправлен): наблюдатель `AVAudioEngineConfigurationChange` без `queue: .main`
+  (`MicRecorder.observeConfigurationChanges`), прежний движок отпускается вне
+  главного потока с ожиданием не дольше 2 с (`MicRecorder.Retiring`). Разбор —
+  `docs/pitfalls.md`, «Nothing the engine posts may wait for the main thread».
+  Живая проверка со снятием наушников не сделана; уходит ли цикл `coreaudiod`,
+  не известно.
 - Sparkle выключен: `AppUpdates.updatesAreOffInThisFork` не даёт создать
   контроллер, пункта «Проверить обновления…» в меню нет, в `Amanu-Info.plist`
   `SUEnableAutomaticChecks` = `false`. Иначе лента upstream заменит сборку
@@ -48,9 +55,9 @@ make SIGN_ID="Apple Development: pnik@me.com (E2297K96J4)"
 до правки зависания): 767 тестов, падают два — «The rest follow by name, each
 language offered once» (`MeetingLanguagesTests`, порядок сортировки языков) и
 «Every row the status window can show sits under the row above it»
-(`StatusWindowLayoutTests`, расхождение раскладки на 1–12 pt). Отличия форка эти
-области не трогают; на чистом `master` прогон не делался, причина не выяснена.
-Новые падения сверять с этим списком.
+(`StatusWindowLayoutTests`, расхождение раскладки на 1–12 pt). Те же два падают
+и на ветке правки от `master` (771 тест, 2026-11-11), то есть от отличий форка
+не зависят; причина не выяснена. Новые падения сверять с этим списком.
 
 **Разрешения macOS** после смены подписи выдаёт Николай: микрофон, запись
 системного звука, календарь, уведомления. Если окно запроса не появляется —
