@@ -205,6 +205,9 @@ final class MicRecorder: @unchecked Sendable {
     // handleConfigChange runs there, so these need no lock.
     private var configObserver: NSObjectProtocol?
     private var restartPending = false
+    /// Restarts made because the engine had gone quiet that have not yet been
+    /// answered by a buffer; see `Stall`.
+    private var fruitlessRestarts = 0
     /// The route the current engine attached to, so a restart can say what
     /// changed rather than only that something did.
     private var inputDevice: String?
@@ -339,6 +342,24 @@ final class MicRecorder: @unchecked Sendable {
             self.restartPending = true
             self.restartCapture()
         }
+    }
+
+    /// Rebuild capture when the engine has gone quiet without saying so.
+    /// Called on the session's tick, next to `checkRoute`, for the same
+    /// reason: nothing else will notice. See `Stall` for what was measured.
+    func checkAlive(now: Date = Date()) {
+        guard isRecording, !restartPending else { return }
+        let last = lastBufferAt
+        if let last, last > attachedAt { fruitlessRestarts = 0 }
+        guard let silent = Stall.overdue(
+            now: now, lastBufferAt: last, attachedAt: attachedAt, restarts: fruitlessRestarts)
+        else { return }
+        let report = "mic: no audio for \(Int(silent))s from an engine that still says it is "
+            + "running — restarting capture\n"
+        FileHandle.standardError.write(Data(report.utf8))
+        fruitlessRestarts += 1
+        restartPending = true
+        restartCapture()
     }
 
     /// Stop capturing and finalize the file. Idempotent.
@@ -813,6 +834,9 @@ final class MicRecorder: @unchecked Sendable {
             try attachWithFallbacks(voiceProcessing: voice, reusingFile: true)
         } catch {
             FileHandle.standardError.write(Data("mic: retrying restart in 2s\n".utf8))
+            // Still pending: the retry is the restart, and a second one
+            // started over it by the tick would tear down what this builds.
+            restartPending = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
                 guard let self, self.isRecording else { return }
                 self.restartCapture()

@@ -108,6 +108,46 @@ extension MicRecorder {
         }
     }
 
+    /// When a running engine that delivers nothing is called dead.
+    ///
+    /// `AVAudioEngineConfigurationChange` is the engine saying it stopped, and
+    /// it does not always say so. On 12 November 2026 a call app closed its
+    /// audio under a recording that carried on: the input unit rebuilt its
+    /// aggregate, `HALC_ProxyIOContext::_StartIO` failed five times in six
+    /// seconds ("StartAndWaitForState returned error 35"), no notification was
+    /// posted, `isRunning` stayed true, and the tap never fired again. A minute
+    /// later the I/O thread was back and calling the engine's input handler,
+    /// and still nothing reached the file. The next call in that recording
+    /// would have had one voice in it.
+    ///
+    /// A microphone that is merely quiet still delivers buffers, and so does a
+    /// paused session, so the absence of buffers is the one thing that cannot
+    /// be mistaken for anything else. The wait doubles with each restart that
+    /// brings nothing back — a device that has genuinely gone gets a rebuild
+    /// every two minutes, not every tick, and `mic_restarts` stays readable.
+    enum Stall {
+        static let firstWait: TimeInterval = 5
+        static let longestWait: TimeInterval = 120
+
+        static func wait(afterRestarts restarts: Int) -> TimeInterval {
+            let doublings = Double(max(0, min(restarts, 16)))
+            return min(firstWait * pow(2, doublings), longestWait)
+        }
+
+        /// How long capture has delivered nothing, once that is long enough
+        /// to act on; nil while it is alive or still owed patience. Counted
+        /// from the attach when the current engine has produced nothing at
+        /// all: a buffer from the engine before it says nothing about this
+        /// one.
+        static func overdue(
+            now: Date, lastBufferAt: Date?, attachedAt: Date, restarts: Int
+        ) -> TimeInterval? {
+            let since = max(lastBufferAt ?? attachedAt, attachedAt)
+            let silent = now.timeIntervalSince(since)
+            return silent >= wait(afterRestarts: restarts) ? silent : nil
+        }
+    }
+
     /// The microphone to bind: the one the call app is on, unless it is the
     /// default anyway — the engine picks that up by itself — or it has refused
     /// recently, in which case the default, which is where capture would have

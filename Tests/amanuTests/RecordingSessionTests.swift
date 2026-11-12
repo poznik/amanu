@@ -30,6 +30,8 @@ final class FakeMicRecorder: MicTrackRecorder {
     func stop() { stopped = true }
     func follow(callApps families: [String]) {}
     func checkRoute() {}
+    private(set) var aliveChecks: [Date] = []
+    func checkAlive(now: Date) { aliveChecks.append(now) }
     func installLiveAudioSink(_ sink: LiveAudioBufferRelay.Sink?) {}
     func setLiveAudioPaused(_ paused: Bool) {}
 }
@@ -217,6 +219,25 @@ struct RecordingSessionTests {
         try Data(repeating: 2, count: 128).write(to: session.dir.appendingPathComponent("system.caf"))
         session.checkTrackLiveness(now: session.startedAt.addingTimeInterval(50))
         #expect(session.stalledTracks == ["mic"])
+    }
+
+    /// The banner tells someone after 45 seconds; the recorder is asked on
+    /// every tick, because an engine that has stopped delivering buffers says
+    /// nothing and only the recorder can rebuild it.
+    @Test("Every tick asks the mic recorder whether capture is still alive")
+    func everyTickAsksWhetherCaptureIsAlive() throws {
+        let root = try makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let mic = FakeMicRecorder(), system = FakeSystemRecorder()
+        let session = try RecordingSession(root: root, mic: mic, system: system)
+        try session.start(systemAudioScope: "all")
+        defer { session.stop() }
+
+        let first = session.startedAt.addingTimeInterval(15)
+        let second = session.startedAt.addingTimeInterval(30)
+        session.checkTrackLiveness(now: first)
+        session.checkTrackLiveness(now: second)
+        #expect(mic.aliveChecks == [first, second])
     }
 
     @Test("A track whose file stops growing is reported as stalled, and one that grows is not")

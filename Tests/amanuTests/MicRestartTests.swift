@@ -35,6 +35,55 @@ struct MicRestartTests {
         #expect(JSONSerialization.isValidJSONObject(meta))
     }
 
+    /// A quiet microphone still delivers buffers; only their absence is a
+    /// dead engine, and five seconds of it is the first thing acted on.
+    @Test func anEngineThatDeliversNothingIsOverdueAfterFiveSeconds() {
+        let attached = Date(timeIntervalSince1970: 1_762_934_400)
+        let last = attached.addingTimeInterval(1_700)
+        #expect(MicRecorder.Stall.overdue(
+            now: last.addingTimeInterval(4.9), lastBufferAt: last, attachedAt: attached,
+            restarts: 0) == nil)
+        #expect(MicRecorder.Stall.overdue(
+            now: last.addingTimeInterval(9), lastBufferAt: last, attachedAt: attached,
+            restarts: 0) == 9)
+    }
+
+    /// A buffer from the engine that was torn down says nothing about the one
+    /// that replaced it, so the new engine's silence is counted from its
+    /// attach — and one that has never delivered is overdue all the same.
+    @Test func silenceIsCountedFromTheAttachWhenTheNewEngineHasDeliveredNothing() {
+        let attached = Date(timeIntervalSince1970: 1_762_934_400)
+        let stale = attached.addingTimeInterval(-30)
+        #expect(MicRecorder.Stall.overdue(
+            now: attached.addingTimeInterval(3), lastBufferAt: stale, attachedAt: attached,
+            restarts: 0) == nil)
+        #expect(MicRecorder.Stall.overdue(
+            now: attached.addingTimeInterval(6), lastBufferAt: stale, attachedAt: attached,
+            restarts: 0) == 6)
+        #expect(MicRecorder.Stall.overdue(
+            now: attached.addingTimeInterval(6), lastBufferAt: nil, attachedAt: attached,
+            restarts: 0) == 6)
+    }
+
+    /// A device that has genuinely gone is rebuilt every two minutes at most,
+    /// not on every tick for the rest of the meeting.
+    @Test func eachRestartThatBringsNothingBackDoublesTheWait() {
+        #expect(MicRecorder.Stall.wait(afterRestarts: 0) == 5)
+        #expect(MicRecorder.Stall.wait(afterRestarts: 1) == 10)
+        #expect(MicRecorder.Stall.wait(afterRestarts: 3) == 40)
+        #expect(MicRecorder.Stall.wait(afterRestarts: 5) == 120)
+        #expect(MicRecorder.Stall.wait(afterRestarts: 400) == 120)
+        #expect(MicRecorder.Stall.wait(afterRestarts: -1) == 5)
+
+        let attached = Date(timeIntervalSince1970: 1_762_934_400)
+        #expect(MicRecorder.Stall.overdue(
+            now: attached.addingTimeInterval(15), lastBufferAt: nil, attachedAt: attached,
+            restarts: 2) == nil)
+        #expect(MicRecorder.Stall.overdue(
+            now: attached.addingTimeInterval(30), lastBufferAt: nil, attachedAt: attached,
+            restarts: 2) == 30)
+    }
+
     @Test func aGapWorthPaddingBecomesFrames() {
         #expect(MicRecorder.silenceFrames(gap: 0.5, sampleRate: 48000) == 24000)
         #expect(MicRecorder.silenceFrames(gap: 1.72, sampleRate: 16000) == 27520)
