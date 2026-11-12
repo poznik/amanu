@@ -13,6 +13,7 @@ protocol MicTrackRecorder: AnyObject {
     func stop()
     func follow(callApps families: [String])
     func checkRoute()
+    func checkAlive(now: Date)
     var firstBufferAt: Date? { get }
     var lastSoundAt: Date? { get }
     var levelMeasurable: Bool { get }

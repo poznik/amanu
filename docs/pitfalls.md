@@ -237,6 +237,23 @@ stopped, change dismissed as ours, mic silent until the next route change
 happened along. What the window is for is buying time to ask the only question
 that has an answer: five seconds after the attach, are buffers still arriving?
 
+**The engine can stop delivering without stopping.** The notification above
+is the engine reporting that it stopped, and there is a way to stop that it does
+not report. When a call app closes its audio the input device is rebuilt once
+more — with AirPods the aggregate itself is — and the engine's input unit
+restarts its own I/O. On 12 November 2026 that restart failed five times in six
+seconds (`HALC_ProxyIOContext::_StartIO(): Start failed - StartAndWaitForState
+returned error 35`), nothing was posted, `isRunning` stayed true, and the tap
+never fired again; a minute later the I/O thread was running and calling the
+engine's input handler, and the file still did not grow. It only matters when
+the recording outlives the call — a manual recording, or two meetings back to
+back — and then it costs the whole of the next call's own voice. So the
+session's tick asks a second question after the one about the route: has a
+buffer arrived in the last five seconds? (`MicRecorder.Stall`.) A quiet
+microphone and a paused session both still deliver buffers, so the absence of
+them is not ambiguous, and the rebuild is the same one a route change gets —
+the gap is padded, the wall clock holds, the restart is in `mic_restarts`.
+
 ## Nothing the engine posts may wait for the main thread
 
 `AVAudioEngine` posts `AVAudioEngineConfigurationChange` synchronously, from

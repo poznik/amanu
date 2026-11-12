@@ -740,6 +740,10 @@ final class RecordingSession {
         // hour is not.
         mic.follow(callApps: tapFamilies)
         mic.checkRoute()
+        // And whether it is still a microphone at all. The banner above waits
+        // 45 seconds and then only tells someone; an engine that has stopped
+        // delivering is rebuilt here, on the tick after it goes quiet.
+        mic.checkAlive(now: now)
 
         // Refresh the manifest once both first buffers have landed, so a crash
         // recovers with the same clock alignment a clean stop would have had.
